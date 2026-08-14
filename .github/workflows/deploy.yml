@@ -60,9 +60,12 @@ jobs:
             # 4. Asegurar persistencia de Base de Datos y Fotos
             mkdir -p data public/uploads
 
-            # 5. Detener contenedor existente
-            echo "🛑 Deteniendo contenedor previo..."
+            # 5. Detener contenedor existente y liberar puerto 80 de servicios del sistema
+            echo "🛑 Deteniendo contenedor previo y liberando puerto 80..."
             sudo docker compose down || true
+            sudo systemctl stop apache2 || true
+            sudo systemctl stop nginx || true
+            sudo fuser -k 80/tcp || true
 
             # 6. LIMPIEZA PROFUNDA DE IMÁGENES ANTERIORES
             echo "🧹 Limpiando imágenes y contenedores obsoletos de Docker..."
