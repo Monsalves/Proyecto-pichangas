@@ -786,7 +786,7 @@ function addToGoogleCalendar() {
   }
 
   const match = state.matchData.match;
-  const title = match.title ? `Partido de Fútbol: ${match.title}` : 'Partido de Fútbol DT Táctico';
+  const title = match.title ? `Partido de Fútbol: ${match.title}` : 'Partido de Fútbol DT Pishangas';
   const location = match.location || 'Cancha por confirmar';
 
   let dateStr = match.date || '';
@@ -818,7 +818,7 @@ function addToGoogleCalendar() {
     console.error('Error calculating end time:', err);
   }
 
-  const details = `⚽ Partido de Fútbol (${match.format || 'Fútbol'})\n👕 Colores Fríos (Azul/Negro) vs Colores Cálidos (Rojo/Blanco)\n\n📍 Lugar: ${location}\n📋 Organizado desde DT Táctico.`;
+  const details = `⚽ Partido de Fútbol (${match.format || 'Fútbol'})\n👕 Colores Fríos (Azul/Negro) vs Colores Cálidos (Rojo/Blanco)\n\n📍 Lugar: ${location}\n📋 Organizado desde DT Pishangas.`;
 
   const googleCalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${startDateTime}/${endDateTime}&details=${encodeURIComponent(details)}&location=${encodeURIComponent(location)}`;
 
