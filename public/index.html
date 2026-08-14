@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>DT Táctico - Pizarra Horizontal (Colores Fríos vs Cálidos)</title>
+  <meta name="description" content="Plataforma de gestión de partidos y pizarra táctica horizontal con Colores Fríos vs Colores Cálidos y láminas de jugadores.">
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@600;700;800;900&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- CSS -->
+  <link rel="stylesheet" href="/css/style.css">
+  
+  <!-- html2canvas Library for PNG Export -->
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+</head>
+<body class="dark-theme">
+
+  <!-- Top Navigation Header -->
+  <header class="main-header">
+    <div class="header-container">
+      <div class="brand">
+        <i class="fa-solid fa-clipboard-user brand-icon"></i>
+        <div class="brand-text">
+          <span class="brand-title">DT TÁCTICO</span>
+          <span class="brand-subtitle">Pizarra Horizontal & Láminas de Jugadores</span>
+        </div>
+      </div>
+
+      <div class="header-center">
+        <div class="mode-switcher" id="modeSwitcher">
+          <button class="mode-btn active" id="btnModePublic" onclick="switchView('public')">
+            <i class="fa-solid fa-users"></i> Vista Pública
+          </button>
+          <button class="mode-btn" id="btnModeAdmin" onclick="switchView('admin')">
+            <i class="fa-solid fa-user-gear"></i> Panel DT <span class="badge-lock" id="lockBadge"><i class="fa-solid fa-lock"></i></span>
+          </button>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <button class="btn btn-outline" onclick="openColorGuideModal()" style="margin-right: 0.5rem;">
+          <i class="fa-solid fa-palette" style="color:var(--accent-amber);"></i> Guía de Colores
+        </button>
+        <button id="authBtn" class="btn btn-outline" onclick="handleAuthAction()">
+          <i class="fa-solid fa-right-to-bracket"></i> <span id="authBtnText">Acceso DT</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Application Container -->
+  <main class="app-container" id="appLayout">
+    
+    <!-- Top Match Info Bar (Public View) -->
+    <div class="top-bar-card" id="publicMatchCard">
+      <div class="top-bar-content">
+        <div class="match-info-group">
+          <div class="match-main-info">
+            <h1 class="match-title" id="displayTitle">Cargando partido...</h1>
+            <div class="match-badges-row">
+              <span class="match-badge" id="matchFormatBadge">11v11</span>
+              <span class="formation-badge home-bg" id="matchFormationBadge">Fríos: 4-3-3</span>
+              <span class="formation-badge away-bg" id="matchFormationAwayBadge">Cálidos: 4-4-2</span>
+            </div>
+          </div>
+
+          <div class="match-meta-inline">
+            <div class="meta-inline-item">
+              <i class="fa-regular fa-calendar-days"></i>
+              <strong id="displayDateTime">-</strong>
+            </div>
+            <div class="meta-inline-item">
+              <i class="fa-solid fa-location-dot"></i>
+              <strong id="displayLocation">-</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="top-bar-actions">
+          <button class="btn btn-outline" onclick="openColorGuideModal()" style="margin-right:0.4rem;">
+            <i class="fa-solid fa-palette"></i> ¿De qué color vestir?
+          </button>
+          <button class="btn btn-gcal" onclick="addToGoogleCalendar()" style="margin-right:0.4rem; background: linear-gradient(135deg, #4285F4 0%, #34A853 100%); color: #ffffff; border: none; font-weight:700; box-shadow: 0 4px 12px rgba(66,133,244,0.35);">
+            <i class="fa-brands fa-google"></i> <i class="fa-regular fa-calendar-plus"></i> Añadir a Google Calendar
+          </button>
+          <button class="btn btn-primary" onclick="exportTacticalSheet()">
+            <i class="fa-solid fa-camera"></i> Descargar Pizarra (PNG)
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Admin View Config Card -->
+    <div class="admin-config-card hidden" id="adminMatchForm">
+      <div class="card-header">
+        <h2 class="card-title"><i class="fa-solid fa-pen-to-square"></i> Panel de Control del DT & Formatos</h2>
+        <span class="match-badge">PANEL DT</span>
+      </div>
+
+      <form id="matchEditForm" onsubmit="saveMatchDetails(event)">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="inputTitle">Nombre del Partido</label>
+            <input type="text" id="inputTitle" class="form-control" required placeholder="Ej: Clasico del Viernes">
+          </div>
+
+          <div class="form-group">
+            <label for="inputFormat">Cantidad de Jugadores por Lado</label>
+            <select id="inputFormat" class="form-control" onchange="handleFormatChange()">
+              <option value="5v5">5 vs 5 (5 Jugadores por lado)</option>
+              <option value="6v6">6 vs 6 (6 Jugadores por lado)</option>
+              <option value="7v7">7 vs 7 (7 Jugadores por lado)</option>
+              <option value="8v8">8 vs 8 (8 Jugadores por lado)</option>
+              <option value="9v9">9 vs 9 (9 Jugadores por lado)</option>
+              <option value="10v10">10 vs 10 (10 Jugadores por lado)</option>
+              <option value="11v11" selected>11 vs 11 (11 Jugadores por lado)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="inputDate">Fecha</label>
+            <input type="date" id="inputDate" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label for="inputTime">Hora</label>
+            <input type="time" id="inputTime" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label for="inputLocation">Cancha / Complejo</label>
+            <input type="text" id="inputLocation" class="form-control" required placeholder="Ej: Cancha 3 - Complejo Don Oscar">
+          </div>
+        </div>
+
+        <div class="preset-section" style="margin-top: 0.75rem;">
+          <span class="preset-label home-text"><i class="fa-solid fa-shirt"></i> Formaciones Colores Fríos (Azul):</span>
+          <div class="preset-buttons" id="homePresetButtons"></div>
+        </div>
+
+        <div class="preset-section" style="margin-top: 0.75rem;">
+          <span class="preset-label away-text"><i class="fa-solid fa-shirt"></i> Formaciones Colores Cálidos (Rojo):</span>
+          <div class="preset-buttons" id="awayPresetButtons"></div>
+        </div>
+
+        <!-- Action Bar in Admin Form -->
+        <div class="admin-actions-bar">
+          <div class="admin-actions-left">
+            <button type="submit" class="btn btn-success">
+              <i class="fa-solid fa-floppy-disk"></i> Guardar Configuración
+            </button>
+            <button type="button" class="btn btn-primary" onclick="openAddPlayerModal()">
+              <i class="fa-solid fa-user-plus"></i> Agregar Jugador
+            </button>
+            <button type="button" class="btn btn-outline" onclick="openCsvModal()">
+              <i class="fa-solid fa-file-csv" style="color:var(--accent-emerald);"></i> Cargar Jugadores (CSV)
+            </button>
+          </div>
+
+          <div class="admin-actions-right">
+            <button type="button" class="btn btn-danger btn-outline" onclick="confirmClearAllPlayers()">
+              <i class="fa-solid fa-trash-can"></i> Vaciar Plantilla Completa
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <!-- Center Section: Horizontal Tactical Pitch -->
+    <section class="pitch-section main-pitch-area">
+      
+      <!-- Pitch Controls Bar -->
+      <div class="pitch-header">
+        <div class="pitch-info">
+          <span class="pitch-mode-tag" id="pitchModeTag"><i class="fa-solid fa-eye"></i> Pizarra Enfrentada (Colores Fríos vs Cálidos)</span>
+          <span class="pitch-subtitle" id="pitchSubtitle">Cancha Horizontal • Fichas Azules (Colores Fríos) vs Fichas Rojas (Colores Cálidos) • Toca una ficha para ver su lámina</span>
+        </div>
+
+        <div class="pitch-view-selector">
+          <button class="view-toggle-btn active" id="btnFilterBoth" onclick="setTeamFilter('both')" title="Ver Ambos Equipos">
+            <i class="fa-solid fa-users-between-lines"></i> Ambos
+          </button>
+          <button class="view-toggle-btn" id="btnFilterHome" onclick="setTeamFilter('home')" title="Ver Solo Colores Fríos">
+            <i class="fa-solid fa-shirt"></i> Fríos
+          </button>
+          <button class="view-toggle-btn" id="btnFilterAway" onclick="setTeamFilter('away')" title="Ver Solo Colores Cálidos">
+            <i class="fa-solid fa-shirt"></i> Cálidos
+          </button>
+          <button class="view-toggle-btn" id="btnToggleOrientation" onclick="togglePitchOrientation()" title="Cambiar Cancha Vertical/Horizontal">
+            <i class="fa-solid fa-mobile-screen-button" id="iconOrientation"></i> <span id="textOrientation">Cancha Vertical</span>
+          </button>
+        </div>
+
+        <div class="pitch-controls" id="pitchControlsAdmin" style="display:none;">
+          <button class="btn btn-sm btn-success" onclick="saveSquadPositions()"><i class="fa-solid fa-cloud-arrow-up"></i> Publicar Pizarra</button>
+        </div>
+      </div>
+
+      <!-- Export Wrapper for html2canvas -->
+      <div class="tactical-board-wrapper horizontal-pitch-wrapper" id="tacticalBoardExportWrapper">
+        <div class="export-banner" id="exportBanner" style="display:none;">
+          <div class="export-banner-content">
+            <h2 id="expTitle">Partido</h2>
+            <p id="expMeta">Fecha • Hora • Lugar</p>
+          </div>
+        </div>
+
+        <!-- Pitch Canvas Container (Horizontal & Vertical Support) -->
+        <div class="pitch-canvas horizontal-pitch" id="pitchCanvas">
+          
+          <!-- SVG Horizontal Field Markings (Desktop / Default) -->
+          <svg class="pitch-svg horizontal-svg" viewBox="0 0 1000 620" preserveAspectRatio="none">
+            <defs>
+              <pattern id="grassStripesHorizontal" width="100" height="620" patternUnits="userSpaceOnUse">
+                <rect x="0" y="0" width="50" height="620" fill="rgba(255, 255, 255, 0.03)" />
+                <rect x="50" y="0" width="50" height="620" fill="rgba(0, 0, 0, 0.04)" />
+              </pattern>
+            </defs>
+            <rect x="0" y="0" width="1000" height="620" fill="url(#grassStripesHorizontal)" />
+
+            <!-- Boundary Line -->
+            <rect x="30" y="25" width="940" height="570" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="3" />
+
+            <!-- Vertical Halfway Line -->
+            <line x1="500" y1="25" x2="500" y2="595" stroke="rgba(255,255,255,0.8)" stroke-width="3" />
+
+            <!-- Center Circle -->
+            <circle cx="500" cy="310" r="85" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="3" />
+            <circle cx="500" cy="310" r="5" fill="rgba(255,255,255,0.9)" />
+
+            <!-- Left Goal & Penalty Area (Colores Fríos Goal) -->
+            <rect x="10" y="225" width="20" height="170" fill="rgba(59,130,246,0.15)" stroke="rgba(255,255,255,0.9)" stroke-width="3" />
+            <rect x="30" y="140" width="150" height="340" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="3" />
+            <rect x="30" y="215" width="55" height="190" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="2" />
+            <circle cx="135" cy="310" r="4" fill="rgba(255,255,255,0.9)" />
+            <!-- Left Penalty Arc -->
+            <path d="M 180 240 A 80 80 0 0 1 180 380" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="3" />
+
+            <!-- Right Goal & Penalty Area (Colores Cálidos Goal) -->
+            <rect x="970" y="225" width="20" height="170" fill="rgba(239,68,68,0.15)" stroke="rgba(255,255,255,0.9)" stroke-width="3" />
+            <rect x="820" y="140" width="150" height="340" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="3" />
+            <rect x="915" y="215" width="55" height="190" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="2" />
+            <circle cx="865" cy="310" r="4" fill="rgba(255,255,255,0.9)" />
+            <!-- Right Penalty Arc -->
+            <path d="M 820 240 A 80 80 0 0 0 820 380" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="3" />
+
+            <!-- Corner Arcs -->
+            <path d="M 30 50 A 25 25 0 0 1 55 25" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="3" />
+            <path d="M 30 570 A 25 25 0 0 0 55 595" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="3" />
+            <path d="M 970 50 A 25 25 0 0 0 945 25" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="3" />
+            <path d="M 970 570 A 25 25 0 0 1 945 595" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="3" />
+          </svg>
+
+          <!-- SVG Vertical Field Markings (Mobile / Vertical View) -->
+          <svg class="pitch-svg vertical-svg" viewBox="0 0 620 1000" preserveAspectRatio="none">
+            <defs>
+              <pattern id="grassStripesVertical" width="620" height="100" patternUnits="userSpaceOnUse">
+                <rect x="0" y="0" width="620" height="50" fill="rgba(255, 255, 255, 0.03)" />
+                <rect x="0" y="50" width="620" height="50" fill="rgba(0, 0, 0, 0.04)" />
+              </pattern>
+            </defs>
+            <rect x="0" y="0" width="620" height="1000" fill="url(#grassStripesVertical)" />
+
+            <!-- Boundary Line -->
+            <rect x="25" y="30" width="570" height="940" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="3" />
+
+            <!-- Horizontal Halfway Line -->
+            <line x1="25" y1="500" x2="595" y2="500" stroke="rgba(255,255,255,0.8)" stroke-width="3" />
+
+            <!-- Center Circle -->
+            <circle cx="310" cy="500" r="85" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="3" />
+            <circle cx="310" cy="500" r="5" fill="rgba(255,255,255,0.9)" />
+
+            <!-- Top Goal & Penalty Area (Colores Fríos - Blue) -->
+            <rect x="225" y="10" width="170" height="20" fill="rgba(59,130,246,0.2)" stroke="rgba(255,255,255,0.9)" stroke-width="3" />
+            <rect x="140" y="30" width="340" height="150" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="3" />
+            <rect x="215" y="30" width="190" height="55" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="2" />
+            <circle cx="310" cy="135" r="4" fill="rgba(255,255,255,0.9)" />
+            <!-- Top Penalty Arc -->
+            <path d="M 240 180 A 80 80 0 0 0 380 180" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="3" />
+
+            <!-- Bottom Goal & Penalty Area (Colores Cálidos - Red) -->
+            <rect x="225" y="970" width="170" height="20" fill="rgba(239,68,68,0.2)" stroke="rgba(255,255,255,0.9)" stroke-width="3" />
+            <rect x="140" y="820" width="340" height="150" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="3" />
+            <rect x="215" y="915" width="190" height="55" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="2" />
+            <circle cx="310" cy="865" r="4" fill="rgba(255,255,255,0.9)" />
+            <!-- Bottom Penalty Arc -->
+            <path d="M 240 820 A 80 80 0 0 1 380 820" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="3" />
+
+            <!-- Corner Arcs -->
+            <path d="M 50 30 A 25 25 0 0 1 25 55" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="3" />
+            <path d="M 570 30 A 25 25 0 0 0 595 55" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="3" />
+            <path d="M 50 970 A 25 25 0 0 0 25 945" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="3" />
+            <path d="M 570 970 A 25 25 0 0 1 595 945" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="3" />
+          </svg>
+
+          <!-- Interactive Pitch Layer for Players & Ball -->
+          <div class="pitch-tokens-layer" id="pitchTokensLayer"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Squads Section BELOW the Pitch (Side-by-Side Parallel Columns) -->
+    <section class="squads-container-below">
+      
+      <!-- Colores Fríos Team Card (Left Column) -->
+      <div class="squad-team-card home-card">
+        <div class="squad-card-header">
+          <h2 class="squad-team-title home-text">
+            <i class="fa-solid fa-shirt"></i> Colores Fríos (Equipo Azul)
+          </h2>
+          <span class="count-badge home-bg" id="homeTotalCountBadge">11 Jugadores</span>
+        </div>
+
+        <div>
+          <div class="squad-section-title"><i class="fa-solid fa-user-check"></i> Titulares en Cancha</div>
+          <div class="squad-grid-list" id="homeStartersList"></div>
+        </div>
+
+        <!-- Substitutes Section -->
+        <div class="substitutes-block hidden" id="homeSubstitutesSection">
+          <div class="squad-section-title" style="color:var(--accent-blue);"><i class="fa-solid fa-chair"></i> Suplentes (Banca)</div>
+          <div class="squad-grid-list" id="homeSubstitutesList"></div>
+        </div>
+      </div>
+
+      <!-- Colores Cálidos Team Card (Right Column) -->
+      <div class="squad-team-card away-card">
+        <div class="squad-card-header">
+          <h2 class="squad-team-title away-text">
+            <i class="fa-solid fa-shirt"></i> Colores Cálidos (Equipo Rojo)
+          </h2>
+          <span class="count-badge away-bg" id="awayTotalCountBadge">11 Jugadores</span>
+        </div>
+
+        <div>
+          <div class="squad-section-title"><i class="fa-solid fa-user-check"></i> Titulares en Cancha</div>
+          <div class="squad-grid-list" id="awayStartersList"></div>
+        </div>
+
+        <!-- Substitutes Section -->
+        <div class="substitutes-block hidden" id="awaySubstitutesSection">
+          <div class="squad-section-title" style="color:var(--accent-red);"><i class="fa-solid fa-chair"></i> Suplentes (Banca)</div>
+          <div class="squad-grid-list" id="awaySubstitutesList"></div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Floating Bulk Selection Bar for Admin Mode -->
+    <div class="bulk-action-bar hidden" id="bulkActionBar">
+      <div class="bulk-action-content">
+        <span><i class="fa-solid fa-check-double"></i> <strong id="selectedCountText">0</strong> jugadores seleccionados</span>
+        <div class="bulk-buttons">
+          <button class="btn btn-sm btn-outline" onclick="clearPlayerSelections()">Cancelar</button>
+          <button class="btn btn-sm btn-danger" onclick="executeBulkDelete()">
+            <i class="fa-solid fa-trash-can"></i> Eliminar Seleccionados
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- World Cup Style Player Trading Card Modal ("Lámina del Mundial") -->
+  <div class="modal-overlay" id="tradingCardModal">
+    <div class="trading-card-container">
+      <button class="card-close-btn" onclick="closeTradingCardModal()">&times;</button>
+
+      <div class="football-card" id="footballTradingCard">
+        <!-- Holographic / Foil Top Header -->
+        <div class="card-header-foil">
+          <div class="card-team-tag" id="cardTeamTag">COLORES FRÍOS</div>
+          <div class="card-dorsal-badge" id="cardDorsalBadge">10</div>
+        </div>
+
+        <!-- Player Photo Frame -->
+        <div class="card-photo-container">
+          <img id="cardPhotoImg" src="" alt="Foto de Jugador" class="card-photo-img hidden" onerror="this.classList.add('hidden'); document.getElementById('cardAvatarFallback').classList.remove('hidden');">
+          <div class="card-avatar-fallback" id="cardAvatarFallback">
+            <i class="fa-solid fa-shirt"></i>
+          </div>
+          <div class="card-role-pill" id="cardRolePill">MEDIOCAMPISTA</div>
+        </div>
+
+        <!-- Player Main Specs & Bio -->
+        <div class="card-details-box">
+          <h2 class="card-player-name" id="cardPlayerName">Nombre del Jugador</h2>
+          <div class="card-nickname-badge" id="cardNicknameBadge">⭐ "EL APODO"</div>
+
+          <div class="card-bio-section">
+            <span class="bio-label"><i class="fa-solid fa-id-card"></i> Ficha Tecnica / Trayectoria:</span>
+            <p class="bio-text" id="cardPlayerBio">Sin descripción asignada aún.</p>
+          </div>
+        </div>
+
+        <!-- Card Footer Info -->
+        <div class="card-footer-branding">
+          <span>DT TÁCTICO • COLECCIÓN 2026</span>
+          <i class="fa-solid fa-shield-halved"></i>
+        </div>
+      </div>
+
+      <!-- Admin Edit Button in Trading Card -->
+      <div class="card-admin-action hidden" id="cardAdminAction" style="margin-top:0.75rem; text-align:center;">
+        <button type="button" class="btn btn-warning btn-block" style="font-weight:800; font-size:0.95rem; box-shadow: 0 4px 14px rgba(245,158,11,0.4);" onclick="handleEditFromTradingCard()">
+          <i class="fa-solid fa-pen-to-square"></i> Editar Jugador (Modo DT)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CSV Import Modal -->
+  <div class="modal-overlay" id="csvImportModal">
+    <div class="modal-card modal-lg">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-file-csv" style="color:var(--accent-emerald);"></i> Carga Masiva de Jugadores vía CSV</h3>
+        <button class="modal-close" onclick="closeCsvModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-desc">Sube un archivo CSV o pega el texto directamente para cargar un equipo completo con apodos, descripciones y fotos.</p>
+
+        <div class="csv-format-guide">
+          <strong>Formato de columnas soportado (encabezado opcional):</strong>
+          <code>nombre,dorsal,posicion,equipo,descripcion,foto_url</code>
+          <div class="csv-example-box">
+Alexis Sanchez,7,FWD,home,El nino maravilla del equipo,https://example.com/alexis.jpg
+Arturo Vidal,8,MID,home,El King del mediocampo,https://example.com/vidal.jpg
+Lionel Messi,10,FWD,away,El astro argentino,https://example.com/messi.jpg
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-top: 1rem;">
+          <label for="csvFileInput"><i class="fa-solid fa-upload"></i> Seleccionar archivo .CSV</label>
+          <input type="file" id="csvFileInput" class="form-control" accept=".csv, .txt" onchange="handleCsvFileSelected(event)">
+        </div>
+
+        <div class="form-group" style="margin-top: 0.75rem;">
+          <label for="csvRawText">O pega aquí el contenido CSV:</label>
+          <textarea id="csvRawText" class="form-control" rows="6" placeholder="Alexis Sanchez,7,FWD,home,Veloz y goleador,https://..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeCsvModal()">Cancelar</button>
+        <button type="button" class="btn btn-success" onclick="processCsvImport()"><i class="fa-solid fa-file-import"></i> Importar Jugadores</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Color Guide Modal (Círculo Cromático) -->
+  <div class="modal-overlay" id="colorGuideModal">
+    <div class="modal-card modal-lg">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-palette" style="color:var(--accent-amber);"></i> Guía de Colores de Camiseta</h3>
+        <button class="modal-close" onclick="closeColorGuideModal()">&times;</button>
+      </div>
+      <div class="modal-body color-guide-modal-body">
+        <p class="modal-desc">Para evitar confusiones en la cancha, revisa los colores permitidos para la indumentaria de cada equipo según el círculo cromático:</p>
+
+        <div class="color-wheel-wrapper">
+          <img src="/img/color_wheel.png" alt="Círculo Cromático - Colores Cálidos vs Colores Fríos" class="color-wheel-img">
+        </div>
+
+        <div class="color-teams-grid">
+          <!-- Colores Cálidos Card -->
+          <div class="color-rule-card warm-rule">
+            <h4 class="rule-title away-text"><i class="fa-solid fa-sun"></i> COLORES CÁLIDOS (Equipo Rojo)</h4>
+            <p class="rule-desc">Puedes asistir con polera / indumentaria de los siguientes tonos:</p>
+            <ul class="color-tags-list">
+              <li class="color-chip chip-red"><span class="dot"></span> Rojo</li>
+              <li class="color-chip chip-orange"><span class="dot"></span> Naranja</li>
+              <li class="color-chip chip-yellow"><span class="dot"></span> Amarillo</li>
+              <li class="color-chip chip-pink"><span class="dot"></span> Rosado</li>
+              <li class="color-chip chip-white"><span class="dot"></span> BLANCO 🤍</li>
+            </ul>
+            <div class="rule-note">⚠️ <strong>Importante:</strong> El color <strong>Blanco</strong> pertenece a este grupo.</div>
+          </div>
+
+          <!-- Colores Fríos Card -->
+          <div class="color-rule-card cool-rule">
+            <h4 class="rule-title home-text"><i class="fa-solid fa-snowflake"></i> COLORES FRÍOS (Equipo Azul)</h4>
+            <p class="rule-desc">Puedes asistir con polera / indumentaria de los siguientes tonos:</p>
+            <ul class="color-tags-list">
+              <li class="color-chip chip-blue"><span class="dot"></span> Azul</li>
+              <li class="color-chip chip-green"><span class="dot"></span> Verde</li>
+              <li class="color-chip chip-purple"><span class="dot"></span> Violeta / Púrpura</li>
+              <li class="color-chip chip-cyan"><span class="dot"></span> Turquesa / Cian</li>
+              <li class="color-chip chip-black"><span class="dot"></span> NEGRO 🖤</li>
+            </ul>
+            <div class="rule-note">⚠️ <strong>Importante:</strong> El color <strong>Negro</strong> pertenece a este grupo.</div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" onclick="closeColorGuideModal()">Entendido</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Login Modal -->
+  <div class="modal-overlay" id="loginModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-lock"></i> Autenticación DT</h3>
+        <button class="modal-close" onclick="closeLoginModal()">&times;</button>
+      </div>
+      <form onsubmit="handleLoginSubmit(event)">
+        <div class="modal-body">
+          <p class="modal-desc">Introduce la contraseña de administración configurada para editar las alineaciones.</p>
+          <div class="form-group">
+            <label for="adminPass">Contraseña de DT</label>
+            <input type="password" id="adminPass" class="form-control" placeholder="••••••••" required autofocus>
+          </div>
+          <div class="error-msg" id="loginErrorMsg" style="display:none; color:var(--accent-red); margin-top:0.5rem; font-size:0.8rem;"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeLoginModal()">Cancelar</button>
+          <button type="submit" class="btn btn-primary"><i class="fa-solid fa-right-to-bracket"></i> Ingresar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Edit / Add Player Modal -->
+  <div class="modal-overlay" id="playerModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="playerModalTitle"><i class="fa-solid fa-user-pen"></i> Editar Jugador</h3>
+        <button class="modal-close" onclick="closePlayerModal()">&times;</button>
+      </div>
+      <form onsubmit="handleSavePlayer(event)">
+        <input type="hidden" id="editPlayerId">
+        <div class="modal-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="editPlayerTeam">Equipo / Color</label>
+              <select id="editPlayerTeam" class="form-control">
+                <option value="home">Colores Fríos (Azul)</option>
+                <option value="away">Colores Cálidos (Rojo)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="editPlayerNumber">Dorsal (#)</label>
+              <input type="number" id="editPlayerNumber" class="form-control" min="1" max="99" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="editPlayerName">Nombre del Jugador</label>
+            <input type="text" id="editPlayerName" class="form-control" required placeholder="Ej: Lionel Messi">
+          </div>
+
+          <div class="form-group" style="margin-top:0.5rem;">
+            <label for="editPlayerNickname"><i class="fa-solid fa-star"></i> Apodo / Sobrenombre (Para la Lámina)</label>
+            <input type="text" id="editPlayerNickname" class="form-control" placeholder='Ej: "El Mago", "La Muralla", "Chapa"'>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="editPlayerRole">Posición Táctica</label>
+              <select id="editPlayerRole" class="form-control">
+                <option value="GK">Arquero (GK)</option>
+                <option value="DEF">Defensa (DEF)</option>
+                <option value="MID">Mediocampista (MID)</option>
+                <option value="FWD">Delantero (FWD)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="editPlayerStatus">Estado</label>
+              <select id="editPlayerStatus" class="form-control">
+                <option value="starter">Titular (En Cancha)</option>
+                <option value="sub">Suplente (En la Banca)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-top:0.75rem;">
+            <label for="editPlayerPhotoFile"><i class="fa-solid fa-upload"></i> Subir Foto desde el PC</label>
+            <input type="file" id="editPlayerPhotoFile" class="form-control" accept="image/png, image/jpeg, image/webp" onchange="uploadPlayerPhotoFile(event)">
+            <div id="photoPreviewBox" class="photo-preview-box hidden" style="margin-top:0.5rem;">
+              <img id="photoPreviewImg" src="" alt="Vista Previa" style="max-height:80px; border-radius:6px; border:1px solid var(--border-color);">
+              <span style="font-size:0.75rem; color:var(--accent-emerald); display:block;"><i class="fa-solid fa-circle-check"></i> Imagen cargada desde tu equipo</span>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-top:0.5rem;">
+            <label for="editPlayerPhotoUrl"><i class="fa-solid fa-link"></i> O ingresar URL de Foto web</label>
+            <input type="text" id="editPlayerPhotoUrl" class="form-control" placeholder="https://ejemplo.com/foto.jpg o /uploads/..." oninput="updatePhotoPreviewFromUrl()">
+          </div>
+
+          <div class="form-group" style="margin-top:0.75rem;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <label for="editPlayerDescription"><i class="fa-solid fa-id-card"></i> Descripción / Apodo del Jugador</label>
+              <span id="charCountBadge" style="font-size:0.725rem; font-weight:700; color:var(--accent-amber);">0 / 150 caracteres</span>
+            </div>
+            <textarea id="editPlayerDescription" class="form-control" rows="3" maxlength="150" placeholder="Ej: Es imbatible bajo los 3 palos y tiene buena salida de pies." oninput="updateCharCounter()"></textarea>
+            
+            <!-- Quick Description Chips -->
+            <div class="desc-presets-wrapper" style="margin-top:0.5rem;">
+              <span style="font-size:0.725rem; color:var(--text-muted); font-weight:700; display:block; margin-bottom:0.25rem;">Frases rápidas sugeridas:</span>
+              <div class="desc-chips-row">
+                <button type="button" class="desc-chip" onclick="applyDescPreset('Es imbatible bajo los 3 palos y tiene buena salida de pies.')">🧤 Imbatible bajo los 3 palos</button>
+                <button type="button" class="desc-chip" onclick="applyDescPreset('Veloz por las bandas, excelente centrador y encarador.')">⚡ Veloz por las bandas</button>
+                <button type="button" class="desc-chip" onclick="applyDescPreset('Muralla defensiva, fuerte en el 1 contra 1 y juego aéreo.')">🛡️ Muralla defensiva</button>
+                <button type="button" class="desc-chip" onclick="applyDescPreset('Especialista en tiros libres y pases filtrados de gol.')">🎯 Especialista en tiros libres</button>
+                <button type="button" class="desc-chip" onclick="applyDescPreset('Goleador nato, excelente definición dentro del área.')">⚽ Goleador nato</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-danger" id="btnDeletePlayer" onclick="handleDeletePlayer()" style="margin-right: auto;">
+            <i class="fa-solid fa-trash-can"></i> Eliminar
+          </button>
+          <button type="button" class="btn btn-secondary" onclick="closePlayerModal()">Cancelar</button>
+          <button type="submit" class="btn btn-success"><i class="fa-solid fa-check"></i> Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- JavaScript -->
+  <script src="/js/app.js"></script>
+</body>
+</html>

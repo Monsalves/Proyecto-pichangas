@@ -1,0 +1,77 @@
+name: Despliegue Automático en VM de Azure
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Desplegar en Azure VM
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout del Código
+        uses: actions/checkout@v4
+
+      - name: Desplegar y Limpiar en VM de Azure via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.AZURE_VM_IP }}
+          username: ${{ secrets.AZURE_VM_USER }}
+          key: ${{ secrets.AZURE_VM_SSH_KEY }}
+          passphrase: ${{ secrets.AZURE_VM_SSH_PASSPHRASE }} # Opcional si la clave tiene contraseña
+          port: 22
+          script: |
+            set -e
+            echo "🚀 Iniciando despliegue de DT Táctico en Azure VM..."
+
+            # 1. Preparar VM limpia (instalación automática si es primera vez)
+            if ! command -v docker &> /dev/null; then
+              echo "📦 Instalando Docker en la VM..."
+              sudo apt-get update
+              sudo apt-get install -y ca-certificates curl gnupg git
+              curl -fsSL https://get.docker.com | sudo sh
+              sudo usermod -aG docker $USER
+              sudo systemctl enable docker
+              sudo systemctl start docker
+            fi
+
+            if ! command -v docker-compose &> /dev/null && ! docker compose version &> /dev/null; then
+              echo "📦 Instalando Docker Compose Plugin..."
+              sudo apt-get install -y docker-compose-plugin || sudo apt-get install -y docker-compose
+            fi
+
+            # 2. Definir directorio de la aplicación
+            APP_DIR="$HOME/dt-tactico"
+
+            if [ ! -d "$APP_DIR" ]; then
+              echo "📂 Clonando repositorio por primera vez..."
+              git clone https://github.com/${{ github.repository }}.git "$APP_DIR"
+            fi
+
+            cd "$APP_DIR"
+
+            # 3. Actualizar repositorio
+            echo "🔄 Obteniendo cambios más recientes..."
+            git fetch --all
+            git reset --hard origin/${{ github.ref_name }}
+
+            # 4. Asegurar persistencia de Base de Datos y Fotos
+            mkdir -p data public/uploads
+
+            # 5. Detener contenedor existente
+            echo "🛑 Deteniendo contenedor previo..."
+            sudo docker compose down || true
+
+            # 6. LIMPIEZA PROFUNDA DE IMÁGENES ANTERIORES
+            echo "🧹 Limpiando imágenes y contenedores obsoletos de Docker..."
+            sudo docker image prune -af
+            sudo docker builder prune -af
+            sudo docker system prune -f
+
+            # 7. Construir y levantar la aplicación limpia
+            echo "🏗️ Construyendo y levantando versión limpia..."
+            sudo docker compose up -d --build
+
+            echo "✅ ¡Despliegue exitoso! Aplicación DT Táctico corriendo en la VM."
