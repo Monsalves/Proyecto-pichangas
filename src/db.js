@@ -299,6 +299,40 @@ const FORMATION_PRESETS_HORIZONTAL = {
   }
 };
 
+// Seed default initial match if database is empty
+const matchCount = db.prepare('SELECT COUNT(*) as count FROM matches').get().count;
+if (matchCount === 0) {
+  const stmt = db.prepare(`
+    INSERT INTO matches (title, date, time, location, opponent, format, formation_name, rival_formation_name)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+  const today = new Date().toISOString().split('T')[0];
+  const info = stmt.run('Clásico de Fútbol', today, '20:00', 'Cancha Principal', 'Colores Cálidos', '11v11', '4-3-3', '4-4-2');
+  const matchId = info.lastInsertRowid;
+
+  db.prepare('INSERT INTO ball_position (match_id, pos_x, pos_y) VALUES (?, 50, 50)').run(matchId);
+
+  const homeDefault = FORMATION_PRESETS_HORIZONTAL['11v11']['home']['4-3-3'];
+  const awayDefault = FORMATION_PRESETS_HORIZONTAL['11v11']['away']['4-4-2'];
+
+  const insertPlayer = db.prepare(`
+    INSERT INTO players (match_id, team, name, number, pos_x, pos_y, is_starter, role, order_index)
+    VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)
+  `);
+
+  if (homeDefault) {
+    homeDefault.forEach((p, idx) => {
+      insertPlayer.run(matchId, 'home', p.name, p.number, p.pos_x, p.pos_y, p.role, idx);
+    });
+  }
+
+  if (awayDefault) {
+    awayDefault.forEach((p, idx) => {
+      insertPlayer.run(matchId, 'away', p.name, p.number, p.pos_x, p.pos_y, p.role, idx);
+    });
+  }
+}
+
 module.exports = {
   db,
   FORMATION_PRESETS_HORIZONTAL
