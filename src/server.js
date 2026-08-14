@@ -47,6 +47,46 @@ function getStartersCountFromFormat(formatStr) {
   return match ? parseInt(match[1]) : 11;
 }
 
+// Helper to map starter players to formation preset coordinates by player role (preserving role)
+function mapStartersToPreset(starters, presetCoords) {
+  if (!starters || starters.length === 0 || !presetCoords || presetCoords.length === 0) return [];
+  
+  const availablePresetSlots = presetCoords.map(slot => ({ ...slot, used: false }));
+  const assignments = [];
+  const unassignedPlayers = [];
+
+  // Match players by exact role match
+  starters.forEach(player => {
+    const role = (player.role || 'MID').toUpperCase();
+    const slotIndex = availablePresetSlots.findIndex(s => !s.used && s.role === role);
+    if (slotIndex !== -1) {
+      availablePresetSlots[slotIndex].used = true;
+      assignments.push({
+        id: player.id,
+        pos_x: availablePresetSlots[slotIndex].pos_x,
+        pos_y: availablePresetSlots[slotIndex].pos_y
+      });
+    } else {
+      unassignedPlayers.push(player);
+    }
+  });
+
+  // Assign any remaining players to unused preset slots
+  unassignedPlayers.forEach(player => {
+    const slotIndex = availablePresetSlots.findIndex(s => !s.used);
+    if (slotIndex !== -1) {
+      availablePresetSlots[slotIndex].used = true;
+      assignments.push({
+        id: player.id,
+        pos_x: availablePresetSlots[slotIndex].pos_x,
+        pos_y: availablePresetSlots[slotIndex].pos_y
+      });
+    }
+  });
+
+  return assignments;
+}
+
 // Helper to get full match payload
 function getMatchPayload(matchId) {
   let match;
@@ -166,13 +206,12 @@ app.put('/api/admin/match', requireAdmin, (req, res) => {
       if (teamPresets) {
         const firstPresetName = Object.keys(teamPresets)[0];
         const presetCoords = teamPresets[firstPresetName];
-        const currentStarters = db.prepare('SELECT id FROM players WHERE match_id = ? AND team = ? AND is_starter = 1 ORDER BY order_index ASC').all(id, teamName);
+        const currentStarters = db.prepare('SELECT * FROM players WHERE match_id = ? AND team = ? AND is_starter = 1 ORDER BY order_index ASC').all(id, teamName);
         
-        currentStarters.forEach((p, idx) => {
-          if (presetCoords[idx]) {
-            db.prepare('UPDATE players SET pos_x = ?, pos_y = ?, role = ? WHERE id = ?')
-              .run(presetCoords[idx].pos_x, presetCoords[idx].pos_y, presetCoords[idx].role, p.id);
-          }
+        const assignments = mapStartersToPreset(currentStarters, presetCoords);
+        assignments.forEach(assign => {
+          db.prepare('UPDATE players SET pos_x = ?, pos_y = ? WHERE id = ?')
+            .run(assign.pos_x, assign.pos_y, assign.id);
         });
 
         if (teamName === 'home') {
@@ -254,11 +293,10 @@ app.post('/api/admin/match/preset', requireAdmin, (req, res) => {
   const starters = db.prepare('SELECT * FROM players WHERE match_id = ? AND team = ? AND is_starter = 1 ORDER BY order_index ASC').all(match_id, targetTeam);
 
   const applyTx = db.transaction(() => {
-    starters.forEach((player, idx) => {
-      if (presetCoords[idx]) {
-        db.prepare('UPDATE players SET pos_x = ?, pos_y = ?, role = ? WHERE id = ?')
-          .run(presetCoords[idx].pos_x, presetCoords[idx].pos_y, presetCoords[idx].role, player.id);
-      }
+    const assignments = mapStartersToPreset(starters, presetCoords);
+    assignments.forEach(assign => {
+      db.prepare('UPDATE players SET pos_x = ?, pos_y = ? WHERE id = ?')
+        .run(assign.pos_x, assign.pos_y, assign.id);
     });
 
     if (targetTeam === 'home') {
@@ -283,7 +321,7 @@ app.post('/api/admin/match/preset', requireAdmin, (req, res) => {
 
 // Add Player (Home or Away)
 app.post('/api/admin/players', requireAdmin, (req, res) => {
-  const { match_id, team, name, number, role, is_starter, nickname, description, photo_url } = req.body;
+  const { match_id, team, name, number, role, is_starter, nickname, description, photo_url, is_captain } = req.body;
 
   if (!match_id || !name || number === undefined) {
     return res.status(400).json({ success: false, message: 'Nombre y dorsal son obligatorios.' });
@@ -293,8 +331,8 @@ app.post('/api/admin/players', requireAdmin, (req, res) => {
   const defaultX = targetTeam === 'home' ? 30 : 70;
 
   const insert = db.prepare(`
-    INSERT INTO players (match_id, team, name, number, pos_x, pos_y, is_starter, role, order_index, nickname, description, photo_url)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO players (match_id, team, name, number, pos_x, pos_y, is_starter, role, order_index, nickname, description, photo_url, is_captain)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   insert.run(
@@ -309,7 +347,8 @@ app.post('/api/admin/players', requireAdmin, (req, res) => {
     99,
     nickname || '',
     description || '',
-    photo_url || ''
+    photo_url || '',
+    is_captain ? 1 : 0
   );
 
   const updatedData = getMatchPayload(match_id);
@@ -319,7 +358,7 @@ app.post('/api/admin/players', requireAdmin, (req, res) => {
 // Update Single Player
 app.put('/api/admin/players/:id', requireAdmin, (req, res) => {
   const { id } = req.params;
-  const { name, number, role, is_starter, team, pos_x, pos_y, nickname, description, photo_url } = req.body;
+  const { name, number, role, is_starter, team, pos_x, pos_y, nickname, description, photo_url, is_captain } = req.body;
 
   const player = db.prepare('SELECT * FROM players WHERE id = ?').get(id);
   if (!player) {
@@ -328,7 +367,7 @@ app.put('/api/admin/players/:id', requireAdmin, (req, res) => {
 
   db.prepare(`
     UPDATE players 
-    SET name = ?, number = ?, role = ?, team = ?, is_starter = ?, pos_x = ?, pos_y = ?, nickname = ?, description = ?, photo_url = ?
+    SET name = ?, number = ?, role = ?, team = ?, is_starter = ?, pos_x = ?, pos_y = ?, nickname = ?, description = ?, photo_url = ?, is_captain = ?
     WHERE id = ?
   `).run(
     name !== undefined ? name : player.name,
@@ -341,6 +380,7 @@ app.put('/api/admin/players/:id', requireAdmin, (req, res) => {
     nickname !== undefined ? nickname : (player.nickname || ''),
     description !== undefined ? description : (player.description || ''),
     photo_url !== undefined ? photo_url : (player.photo_url || ''),
+    is_captain !== undefined ? (is_captain ? 1 : 0) : (player.is_captain || 0),
     id
   );
 
@@ -356,8 +396,8 @@ app.post('/api/admin/players/import-csv', requireAdmin, (req, res) => {
   }
 
   const insert = db.prepare(`
-    INSERT INTO players (match_id, team, name, number, pos_x, pos_y, is_starter, role, order_index, nickname, description, photo_url)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO players (match_id, team, name, number, pos_x, pos_y, is_starter, role, order_index, nickname, description, photo_url, is_captain)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   const insertMany = db.transaction((playerList) => {
@@ -367,6 +407,9 @@ app.post('/api/admin/players/import-csv', requireAdmin, (req, res) => {
       const targetTeam = (p.team && (p.team === 'away' || p.team === 'cálidos' || p.team === 'calidos' || p.team === 'rojo')) ? 'away' : 'home';
       const defaultX = targetTeam === 'home' ? (15 + (count * 6) % 30) : (55 + (count * 6) % 30);
       const defaultY = 20 + ((count * 12) % 60);
+
+      const capVal = (p.is_captain || p.escapitan || p.capitan || '').toString().toLowerCase();
+      const isCaptain = (capVal === '1' || capVal === 'true' || capVal === 'si' || capVal === 'sí') ? 1 : 0;
 
       insert.run(
         match_id,
@@ -380,7 +423,8 @@ app.post('/api/admin/players/import-csv', requireAdmin, (req, res) => {
         count,
         p.nickname ? p.nickname.toString().trim() : '',
         p.description ? p.description.toString().trim() : '',
-        p.photo_url ? p.photo_url.toString().trim() : ''
+        p.photo_url ? p.photo_url.toString().trim() : '',
+        isCaptain
       );
       count++;
     }

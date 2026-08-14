@@ -241,12 +241,15 @@ function createPlayerTokenElement(player, team) {
     token.style.top = `${player.pos_y}%`;
   }
 
+  const captainBadgeHtml = player.is_captain == 1 ? `<div class="captain-badge" title="Capitán (C)">C</div>` : '';
+
   token.innerHTML = `
     <div class="token-circle">
       ${player.number}
       <span class="role-tag">${player.role}</span>
+      ${captainBadgeHtml}
     </div>
-    <div class="token-label" title="${escapeHtml(player.name)}">${escapeHtml(player.name)}</div>
+    <div class="token-label" title="${escapeHtml(player.name)}">${player.is_captain == 1 ? '© ' : ''}${escapeHtml(player.name)}</div>
   `;
 
   // Click handler: Open Trading Card
@@ -292,7 +295,7 @@ function renderSquadGridList(containerId, playersList, team) {
               onchange="togglePlayerSelection(${p.id}, this.checked)">
           ` : ''}
           <span class="squad-number ${numberClass}">${p.number}</span>
-          <span class="squad-name">${escapeHtml(p.name)}</span>
+          <span class="squad-name">${p.is_captain == 1 ? '<span style="color:var(--accent-amber); font-weight:800;" title="Capitán (C)">© </span>' : ''}${escapeHtml(p.name)}</span>
           <span class="squad-role-tag">${p.role}</span>
         </div>
         <div class="squad-item-actions">
@@ -348,6 +351,16 @@ function openTradingCardModal(player) {
     'FWD': 'DELANTERO (FWD)'
   };
   document.getElementById('cardRolePill').innerText = roleNames[player.role] || player.role;
+
+  // Captain Badge
+  const capBadgeEl = document.getElementById('cardCaptainBadge');
+  if (capBadgeEl) {
+    if (player.is_captain == 1) {
+      capBadgeEl.classList.remove('hidden');
+    } else {
+      capBadgeEl.classList.add('hidden');
+    }
+  }
 
   // Name & Nickname Badge
   document.getElementById('cardPlayerName').innerText = player.name;
@@ -910,6 +923,7 @@ function openAddPlayerModal() {
   document.getElementById('editPlayerPhotoUrl').value = '';
   document.getElementById('editPlayerPhotoFile').value = '';
   document.getElementById('editPlayerDescription').value = '';
+  document.getElementById('editPlayerIsCaptain').checked = false;
   document.getElementById('btnDeletePlayer').style.display = 'none';
 
   resetPhotoPreview();
@@ -929,6 +943,7 @@ function openEditPlayerModal(player) {
   document.getElementById('editPlayerPhotoUrl').value = player.photo_url || '';
   document.getElementById('editPlayerPhotoFile').value = '';
   document.getElementById('editPlayerDescription').value = player.description || '';
+  document.getElementById('editPlayerIsCaptain').checked = player.is_captain == 1;
   document.getElementById('btnDeletePlayer').style.display = 'block';
 
   if (player.photo_url && player.photo_url.trim().length > 0) {
@@ -1055,6 +1070,7 @@ async function handleSavePlayer(e) {
   const is_starter = document.getElementById('editPlayerStatus').value === 'starter';
   const photo_url = document.getElementById('editPlayerPhotoUrl').value;
   const description = document.getElementById('editPlayerDescription').value;
+  const is_captain = document.getElementById('editPlayerIsCaptain').checked ? 1 : 0;
 
   const isEdit = !!id;
   const url = isEdit ? `/api/admin/players/${id}` : '/api/admin/players';
@@ -1069,7 +1085,8 @@ async function handleSavePlayer(e) {
     role,
     is_starter,
     photo_url,
-    description
+    description,
+    is_captain
   };
 
   try {

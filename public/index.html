@@ -392,6 +392,7 @@
 
         <!-- Player Main Specs & Bio -->
         <div class="card-details-box">
+          <div class="card-captain-badge hidden" id="cardCaptainBadge"><i class="fa-solid fa-copyright"></i> CAPITÁN DEL EQUIPO</div>
           <h2 class="card-player-name" id="cardPlayerName">Nombre del Jugador</h2>
           <div class="card-nickname-badge" id="cardNicknameBadge">⭐ "EL APODO"</div>
 
@@ -579,6 +580,11 @@ Lionel Messi,10,FWD,away,El astro argentino,https://example.com/messi.jpg
                 <option value="sub">Suplente (En la Banca)</option>
               </select>
             </div>
+          <div class="form-group" style="margin-top:0.5rem; background:rgba(245,158,11,0.08); padding:0.6rem 0.8rem; border-radius:6px; border:1px solid rgba(245,158,11,0.3);">
+            <label style="display:flex; align-items:center; gap:0.6rem; cursor:pointer; margin:0; font-weight:700; color:var(--accent-amber);">
+              <input type="checkbox" id="editPlayerIsCaptain" style="width:18px; height:18px; accent-color:var(--accent-amber); cursor:pointer;">
+              <span><i class="fa-solid fa-copyright"></i> Capitán del Equipo (©)</span>
+            </label>
           </div>
 
           <div class="form-group" style="margin-top:0.75rem;">

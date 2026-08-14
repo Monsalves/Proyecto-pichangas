@@ -68,6 +68,10 @@ try {
   db.exec("ALTER TABLE players ADD COLUMN nickname TEXT DEFAULT ''");
 } catch (e) {}
 
+try {
+  db.exec("ALTER TABLE players ADD COLUMN is_captain INTEGER DEFAULT 0");
+} catch (e) {}
+
 // Formations Presets for Formats from 5v5 to 11v11
 // home = Colores Fríos (Azul, Left side X: 5% to 48%)
 // away = Colores Cálidos (Rojo, Right side X: 52% to 95%)
