@@ -5,9 +5,8 @@ services:
       dockerfile: Dockerfile
     container_name: dt_tactico_app
     restart: unless-stopped
-    ports:
-      - "80:3000"
-      - "3000:3000"
+    expose:
+      - "3000"
     environment:
       - PORT=${PORT:-3000}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
@@ -16,3 +15,21 @@ services:
     volumes:
       - ./data:/app/data
       - ./public/uploads:/app/public/uploads
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: dt_tactico_caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - dt-tactico
+
+volumes:
+  caddy_data:
+  caddy_config:

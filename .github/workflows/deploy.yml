@@ -68,6 +68,7 @@ jobs:
             sudo systemctl stop nginx 2>/dev/null || true
             sudo killall -9 node 2>/dev/null || true
             sudo fuser -k 80/tcp 2>/dev/null || true
+            sudo fuser -k 443/tcp 2>/dev/null || true
             sudo fuser -k 3000/tcp 2>/dev/null || true
 
             # 6. LIMPIEZA PROFUNDA DE IMÁGENES ANTERIORES
